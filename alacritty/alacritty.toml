@@ -1,0 +1,54 @@
+### Alacritty - TOML configuration file format
+
+
+### GENERAL
+### This section documents the root level of the configuration file
+# All imports must either be absolute paths starting with `/`,
+# or paths relative to the user's home directory starting with `~/`
+[general]
+import = ["rose-pine-dawn.toml"]
+working_directory = "None"
+live_config_reload = true
+
+
+### ENV
+### Any items in the `env` entry below will be added as
+### environment variables. Some entries may override variables
+### set by alacritty itself.
+
+### WINDOW
+### This section documents the [window] table of the configuration file
+[window]
+dimensions = { columns = 120, lines = 50 }
+padding = { x = 0, y = 0 }
+opacity = 1.0
+startup_mode = "Windowed"
+title = "Alacritty"
+
+
+### SCROLLING
+### This section documents the [scrolling] table of the configuration file
+[scrolling]
+history = 10000
+
+
+### FONT
+### This section documents the [font] table of the configuration file
+[font]
+normal = { family = "Maple Mono Normal NL NF CN", style = "Regular" }
+size = 12.0
+
+
+### KEYBOARD
+### This section documents the [keyboard] table of the configuration file
+[keyboard]
+bindings = [
+    # `Ctrl+Ins` for "Copy"
+    { key = "Insert", mods = "Control", action = "Copy" },
+    { key = "Insert", mods = "Control", mode = "Vi|~Search", action = "ClearSelection" },
+]
+
+
+### COLORS
+### This section documents the [colors] table of the configuration file
+[colors]

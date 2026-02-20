@@ -1,0 +1,8 @@
+font-family = "Maple Mono NL NF CN"
+font-size = 12
+
+window-decoration = auto
+window-width = 120
+window-height = 50
+
+theme = dark:Rose Pine Moon,light:Rose Pine Dawn
