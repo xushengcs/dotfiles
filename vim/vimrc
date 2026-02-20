@@ -1,0 +1,206 @@
+""" **************************************************
+""" START: Basic Settings ****************************
+""" **************************************************
+
+set nocompatible  " 禁用vi兼容模式，可以使用更多属于vim的功能
+
+
+""" 编码
+set encoding=utf-8  " VIM内部的编码方式（buffer、寄存器、脚本中的字符串等）
+set fileencoding=utf-8  " 文件编码方式，保存文件时使用的编码
+set fileencodings=ucs-bom,utf-8  " 打开文件时尝试识别编码的顺序
+
+
+""" 平台
+set shellslash  " 允许在Windows下使用Unix风格的路径分隔符
+if has('win32') || has('win64')
+    let s:state_dir = expand('$LOCALAPPDATA') . '/vim'  " ~\AppData\Local\vim
+else
+    if empty($XDG_STATE_HOME)
+        let s:state_dir = expand('~/.local/state/vim')
+    else
+        let s:state_dir = $XDG_STATE_HOME . '/vim'
+    endif
+endif
+
+
+""" 文件
+filetype plugin indent on  " 检测文件类型，根据文件类型激活相关Plugin并设置缩进格式
+set confirm  " 在关闭有未保存修改的buffer时，弹出确认提示
+set hidden  " 允许在有未保存修改的buffer间切换
+set sessionoptions=buffers,curdir,tabpages,winsize  " 保存会话的内容
+
+" 持久撤销
+if has('persistent_undo')
+    set undofile
+    let &undodir = s:state_dir . '/undo//'
+    set undolevels=10000
+endif
+
+" 交换文件
+let &directory = s:state_dir . '/swap//'
+
+" 关闭备份文件
+set nobackup
+set nowritebackup
+
+" 自动加载外部修改
+set updatetime=200  " Save swap file and trigger CursorHold
+set autoread
+augroup autoread_checktime
+    autocmd!
+    autocmd FocusGained,BufEnter,CursorHold *
+        \ if mode() != 'c' |
+        \     silent! checktime |
+        \ endif
+augroup END
+
+
+""" 编辑
+syntax on  " 语法高亮
+
+set number  " 绝对行号
+set relativenumber  " 相对行号
+augroup numbertoggle
+    autocmd!
+    autocmd InsertEnter * if &number | set norelativenumber | endif  " 只保留绝对行号
+    autocmd InsertLeave * if &number | set relativenumber | endif  " 同时使用绝对行号和相对行号
+augroup END
+
+set wrap  " 长行回绕，在下一行显示
+set linebreak  " 按单词换行，而不是硬切
+if has('breakindent')
+    set breakindent  " 视觉缩进更自然
+endif
+
+set ruler  " 显示光标所在行和列
+set cursorline  " 高亮光标所在行
+set scrolloff=4  " 光标与屏幕上下边缘的最小距离
+set sidescrolloff=8  " 光标与屏幕左右边缘的最小距离
+set formatoptions=crqj  " 控制自动格式化的行为
+set whichwrap+=b,s,<,>,[,],h,l  " 设置水平移动按键可以移动到上一行或下一行
+set conceallevel=0  " 正常显示concealed text
+
+" indent: 若用了set indent, set ai等设置，可用backspace将字段缩进删除
+" 否则在字段缩进处按backspace无响应
+" eol: insert模式下在行开头，通过backspace合并两行
+" 否则无法合并两行
+" start: 可以删除此次insert之前编辑的内容
+" 否则只能删除这次insert编辑的内容
+set backspace=indent,eol,start
+
+set autoindent  " 根据上一行决定新行的缩进
+set shiftround  " Round indent to multiple of 'shiftwidth'
+set expandtab  " 按下<Tab>时插入空格。如果要插入<Tab>字符，需要按<CTRL-V>键，再按<Tab>键
+set softtabstop=4  " 当expandtab被设置时，按下<Tab>或<BackSpace>时插入或删除的空格数
+set shiftwidth=4  " >>、<<、==、自动缩进使用的缩进宽度。设置expandtab时，>>插入shiftwidth个空格
+                  " 设置noexpandtab时，>>插入混合的'\t'和空格，使得视觉宽度增加shiftwidth
+set tabstop=4  " '\t'字符的显示宽度
+autocmd FileType make setlocal noexpandtab softtabstop=0 shiftwidth=8 tabstop=8  " Makefile必须使用真实Tab
+
+set showmatch  " 在输入闭括号时，短暂地跳转到与之匹配的开括号
+set matchtime=5  " 跳转到匹配的开括号的时间长度 (5表示0.5s)
+
+set list  " <Tab>显示为 ^I ，而 $ 显示在每行的结尾
+set listchars=tab:>-,trail:·,extends:›,precedes:‹  " <Tab>显示为 >--- ，行尾空格显示为 ·
+
+" For clipboard option, check https://vimdoc.sourceforge.net/htmldoc/options.html#'clipboard'
+" In X11, There are three documented selections: PRIMARY, SECONDARY, CLIPBOARD
+" PRIMARY is used for last selected text, and CLIPBOARD is used for copy/paste operations
+" In X11, register `*` is mapped to PRIMARY and register `+` is mapped to CLIPBOARD
+" In Win/MacOS, `unnamed` or `unnamed,unnamedplus` use clipboard register `*`, which is mapped to CLIPBOARD,
+" `unnamedplus` uses `*` for delete, change, put ... (to store/put deleted text) but not yank (to store yanked text)
+if has('clipboard')
+    if has('unnamedplus')
+        set clipboard=unnamedplus
+    else
+        set clipboard=unnamed
+    endif
+endif
+
+set mouse=a  " 允许使用鼠标
+
+set noerrorbells  " 防止误触响铃
+set novisualbell  " 防止误触闪屏
+
+
+""" 搜索
+set wrapscan  " 搜索在文件尾折回文件头
+set ignorecase  " 默认忽略大小写敏感
+set smartcase  " 若输入的搜索内容含有大写字母，则切换回大小写敏感
+set incsearch  " 在输入搜索内容的同时搜索，按<Esc>取消搜索
+set hlsearch  " 高亮搜索内容
+nnoremap <silent> <Esc><Esc> <cmd>nohlsearch<cr>  " 双击<Esc>取消搜索高亮
+set grepformat=%f:%l:%c:%m,%f:%l:%m  " （在VIM中使用:grep进行）跨文件搜索的结果显示格式
+
+
+""" 状态栏
+set showcmd  " 显示目前执行的命令
+set showmode  " 显示VIM当前模式 (insert, visual ...)
+" 设置状态栏显示的信息
+" %c是列号，以字节数计 (比如一个'\t'只会让%c加1)
+" %v是虚列号，即在屏幕上是第%v列 (比如一个'\t'会让%v加4)
+set statusline=
+set statusline+=%{expand('%:.')}  " 文件路径
+set statusline+=%m%r%h%w  " 文件状态标志：修改、只读、帮助、窗口
+set statusline+=%=  " 分隔符，之前的信息左对齐，之后的信息右对齐
+set statusline+=[%{&ff}]  " 文件格式
+set statusline+=[%{&fenc==''?&enc:&fenc}]  " 文件编码
+set statusline+=[%{&filetype==''?'none':&filetype}]  " 文件类型
+set statusline+=[%l:%v/%L]  " 行号:虚列号/总行数
+set laststatus=2  " 总是显示状态栏
+
+
+""" 窗口
+set splitbelow  " 水平split时，新窗口在下方
+set splitright  " 垂直split时，新窗口在右侧
+set winminwidth=5  " Minimum window width
+
+
+""" 命令
+set wildmenu  " 命令行补全
+set wildmode=longest:full,full  " 命令行补全
+set wildignore+=*.o,*.obj,*.pyc,*/__pycache__/*,*/.git/*,*/.hg/*,*/.svn/*  " 命令行补全时忽略这些文件
+
+
+""" 性能
+set lazyredraw  " 在执行宏、搜索等操作时，不会在每一步中间状态都刷新屏幕，提升性能
+set redrawtime=1500  " 语法高亮的最大时间，避免极端大文件/复杂高亮导致的卡死
+set synmaxcol=300  " 只对前300列进行语法高亮，提升性能
+" 大文件保护
+let g:largefile_threshold = 5 * 1024 * 1024  " 5 MB
+function! s:HandleLargeFile(fname) abort
+    let l:size = getfsize(a:fname)
+    if l:size < 0 || l:size <= g:largefile_threshold
+        return
+    endif
+
+    let b:largefile = 1  " 标记为大文件，以便其他插件检测
+
+    " 只对当前buffer生效
+    setlocal nosyntax
+    setlocal filetype=text  " 防止ftplugin加载
+    setlocal nolist
+    setlocal noundofile
+    setlocal undolevels=-1
+    setlocal noswapfile
+endfunction
+
+augroup LargeFile
+    autocmd!
+    autocmd BufReadPre * call s:HandleLargeFile(expand('<afile>'))
+augroup END
+
+
+" 外观
+if has('termguicolors')
+    set termguicolors
+endif
+
+""" **************************************************
+""" END: Basic Settings ******************************
+""" **************************************************
+
+
+
+""" --------------------------------------------------
