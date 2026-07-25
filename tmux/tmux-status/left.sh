@@ -53,6 +53,11 @@ if [[ -z "$sessions" ]]; then
   exit 0
 fi
 
+sessions=$(printf '%s\n' "$sessions" | grep -Evi '^([^:]+)::([0-9]+-)?scratch$' || true)
+if [[ -z "$sessions" ]]; then
+  exit 0
+fi
+
 "$HOME/.config/tmux/tmux-status/tracker_cache.sh" 2>/dev/null || true
 
 CACHE_FILE="/tmp/tmux-tracker-cache.json"
@@ -61,13 +66,23 @@ if [[ -f "$CACHE_FILE" ]]; then
   tracker_state=$(cat "$CACHE_FILE" 2>/dev/null || true)
 fi
 
+question_state=$(tmux list-panes -a -F '#{session_id}::#{@op_question_pending}' 2>/dev/null || true)
+
 get_session_icon() {
   local sid="$1"
-  local has_bell=0 has_watch=0
+  local has_question=0 has_bell=0 has_watch=0 has_fail=0
+
+  local question_pane
+  question_pane=$(grep -F -m1 -x "${sid}::1" <<< "$question_state" || true)
+  [[ -n "$question_pane" ]] && has_question=1
 
   local unread_win
   unread_win=$(tmux list-windows -t "$sid" -F '#{@unread}' 2>/dev/null | grep -m1 '^1$' || true)
   [[ -n "$unread_win" ]] && has_bell=1
+
+  local failed_win
+  failed_win=$(tmux list-windows -t "$sid" -F '#{@unread}:#{@watch_failed}' 2>/dev/null | grep -m1 '^1:1$' || true)
+  [[ -n "$failed_win" ]] && has_fail=1
 
   local watching_win
   watching_win=$(tmux list-windows -t "$sid" -F '#{@watching}' 2>/dev/null | grep -m1 '^1$' || true)
@@ -76,18 +91,23 @@ get_session_icon() {
   if [[ -n "$tracker_state" ]]; then
     local result
     result=$(echo "$tracker_state" | jq -r --arg sid "$sid" '
-      .tasks // [] | .[] | select(.session_id == $sid) |
-      if .status == "completed" and .acknowledged != true then "waiting"
-      elif .status == "in_progress" then "in_progress"
-      else empty end
-    ' 2>/dev/null | head -1 || true)
+      .tasks // []
+      | map(select(.session_id == $sid))
+      | if any(.status == "completed" and .acknowledged != true) then "waiting"
+        elif any(.status == "in_progress") then "in_progress"
+        else empty end
+    ' 2>/dev/null || true)
     case "$result" in
       waiting) has_bell=1 ;;
       in_progress) has_watch=1 ;;
     esac
   fi
 
-  if (( has_bell )); then
+  if (( has_question )); then
+    printf '❓'
+  elif (( has_fail )); then
+    printf '❌'
+  elif (( has_bell )); then
     printf '🔔'
   elif (( has_watch )); then
     printf '⏳'

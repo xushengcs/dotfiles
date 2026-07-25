@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Args: <pane_pid> <pane_id> <pane_tty> <pane_title> <pane_width> <pane_path> <pane_cmd>
+# Args: <pane_pid> <pane_tty> <pane_title> <pane_width> <pane_path> <pane_cmd> <pane_watching>
 pid="${1:-}"
-pane_id="${2:-}"
-pane_tty="${3:-}"
-pane_title="${4:-}"
-width="${5:-80}"
-pane_path="${6:-$PWD}"
-pane_cmd="${7:-}"
+pane_tty="${2:-}"
+pane_title="${3:-}"
+width="${4:-80}"
+pane_path="${5:-$PWD}"
+pane_cmd="${6:-}"
+pane_watching="${7:-}"
 ps_line=""
 
 # Best-effort: inherit venv/conda from the pane's process env
@@ -52,22 +52,6 @@ trim_to_width() {
   printf '%s…' "${text:0:$((max - 1))}"
 }
 
-load_option() {
-  local option value
-  option="$1"
-  [[ -n "$pane_id" ]] || return 0
-  value=$(tmux display-message -p -t "$pane_id" "#{${option}}" 2>/dev/null | tr -d '\r\n' || true)
-  value=$(printf '%s' "$value" | perl -0pe 's/\s+/ /g; s/^\s+|\s+$//g')
-  printf '%s' "$value"
-}
-
-clear_work_labels() {
-  [[ -n "$pane_id" ]] || return 0
-  tmux set-option -p -u -t "$pane_id" @op_work_theme 2>/dev/null || true
-  tmux set-option -p -u -t "$pane_id" @op_work_now 2>/dev/null || true
-  tmux set-option -p -u -t "$pane_id" @op_work_summary 2>/dev/null || true
-}
-
 opencode_active() {
   local tty_name tty_ps
   [[ "$pane_title" == OC\ \|* ]] && return 0
@@ -97,47 +81,13 @@ else
   title=$(fallback)
 fi
 
-theme=$(load_option "@op_work_theme")
-if [[ -z "$theme" ]]; then
-  theme=$(load_option "@op_work_summary")
+if [[ "$pane_watching" == "1" ]]; then
+  title="⏳ $title"
 fi
-now=$(load_option "@op_work_now")
 
 if ! opencode_active; then
-  if [[ -n "$theme" || -n "$now" ]]; then
-    clear_work_labels
-  fi
   printf '%s' "$title"
   exit 0
 fi
 
-summary_display=""
-if [[ -n "$theme" ]]; then
-  summary_display="[$theme]"
-fi
-if [[ -n "$now" ]]; then
-  if [[ -n "$summary_display" ]]; then
-    summary_display="$summary_display  ↳ $now"
-  else
-    summary_display="↳ $now"
-  fi
-fi
-
-if [[ -z "$summary_display" ]]; then
-  printf '%s' "$title"
-  exit 0
-fi
-
-reserved_width=$((${#summary_display} + 3))
-prompt_width=$((width - reserved_width))
-if (( prompt_width < 16 )); then
-  summary_display=$(trim_to_width "$summary_display" "$width")
-  printf '%s' "$summary_display"
-  exit 0
-fi
-
-if command -v starship >/dev/null 2>&1; then
-  title=$(cd "$pane_path" && run_starship "$prompt_width") || title=$(fallback)
-fi
-
-printf '%s · %s' "$summary_display" "$title"
+printf '%s' "$title"
